@@ -1,0 +1,211 @@
+ System butler 
+ 
+mqttBroker "localhost" : 1883    //192.168.1.18  192.168.43.229
+
+Dispatch	queryPresence		:	queryPresence( CATEGORY, NAME )
+Dispatch	replyPresence		:	replyPresence( STATUS )    
+
+Event 		stopAppl			:	stopAppl
+Event 		reactivateAppl		:	reactivateAppl
+   
+Dispatch	cmd					:	cmd( CMD, ARG1 ) //modificato cmd per gestire un argomento in più (FOOD ecc.)
+Dispatch 	azione				:	azione( AZIONE )
+Dispatch 	check				:	check( NUMBER )
+
+Dispatch	done				: 	done
+
+Event		missingFood			:	missingFood( FOOD )
+ 
+ 
+Context ctxButler      ip [host="localhost"    port=8038]   -mqtt
+
+QActor fridge_dummy context ctxButler{
+	State s0 initial{
+		solve( consult("sysRules.pl")	 ) 		      
+		solve( consult("fridgeModel.pl")	 ) 		
+		solve( consult("presenza.pl")	 ) 	
+	} Goto waitQuery
+	
+	State waitQuery{		
+	} Transition t0 whenMsg queryPresence -> replyQuery
+	
+	State replyQuery{
+		delay 2000
+		
+		onMsg ( queryPresence : queryPresence( CATEGORY, NAME) ){
+			printCurrentMessage
+			["storeCurrentMessageForReply()"]
+			
+			solve( assert( done( queryReply, $payloadArg(1))))
+			
+			solve( presenza($payloadArg(1),cibo,frigo) )
+			ifSolved {
+				["replyToCaller(\"replyPresence\", \"replyPresence(present)\")"]
+			} else {				
+				["replyToCaller(\"replyPresence\", \"replyPresence(absent)\")"]
+			}
+		}
+	} Goto waitQuery
+}	
+
+QActor frontend_dummy context ctxButler{
+	State s0 initial{
+		solve( consult("sysRules.pl")	 ) 		 
+	} Goto waitEvent
+	
+	State waitEvent{		
+	} Transition t0 whenEvent missingFood -> persistMissingFood
+	
+	State persistMissingFood{
+		onMsg ( missingFood : missingFood( FOOD ) ){
+			printCurrentMessage
+			
+			solve( assert( missingFood( $payloadArg(0) ) ) )
+		}
+	} Goto waitEvent
+}	
+
+QActor butler context ctxButler{
+	["var sync = false"]
+	
+	State s0 initial {
+		solve( consult("sysRules.pl")	 )  
+				      
+		solve( consult("butlerModel.pl")	 ) 		
+		solve( consult("test.pl")	 )
+		
+		solve( showResourceModel ) 				
+		
+		//run itunibo.coap.modelResourceCoap.create( myself, "fridge" ) //CoAP access
+		
+	}Goto waitCmd
+	
+	State waitCmd{		
+		run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "waitCmd")				
+		solve( showResourceModel ) 	
+		
+	} Transition t0 whenMsg cmd -> solveCmd
+	
+	State solveCmd{		
+		onMsg(cmd: cmd (CMD , ARG1)){
+			printCurrentMessage
+			run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "solveCmd")
+			
+			solve( retract( currentCmd( _,_ )))								//	
+			solve( assert( currentCmd( $payloadArg(0),$payloadArg(1))))		// persist del cmd corrente
+					
+			solve( comando( $payloadArg(0), $payloadArg(1) ) )	
+		}		
+	} Goto solveAction
+	
+	State solveAction{
+		run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "solveAction")
+		
+		solve( retract ( azione (ARG0, ARG1, ARG2, ARG3 ) ))
+			
+		if "currentSolution.isSuccess()"{	
+			["val Azione= currentSolution.getVarValue(\"ARG0\").toString()"]	
+					
+			if "Azione==\"querySync\"" {
+				["val Food= currentSolution.getVarValue(\"ARG1\").toString()"]
+				["sync = true"]
+				forward butler -m queryPresence : queryPresence( cibo, $Food)
+			}
+			if "Azione==\"queryAsync\"" {
+				["val Food= currentSolution.getVarValue(\"ARG1\").toString()"]
+				["sync = false"]
+				forward butler -m queryPresence : queryPresence( cibo, $Food)
+			}
+			if "Azione==\"check\"" {
+				["val Number= currentSolution.getVarValue(\"ARG1\").toString()"]
+				forward butler -m check : check ( $Number)	
+			}
+		} else {
+			forward butler -m done : done
+		}
+	} Transition t0 whenMsg done -> waitCmd
+					whenMsg queryPresence and "sync"-> azioneQuerySync
+					whenMsg queryPresence and "!sync"-> azioneQueryASync
+					whenMsg check -> azioneCheck
+					whenEvent stopAppl -> stoppedSolvedAction	
+					
+	State azioneCheck{
+		onMsg (check : check (NUMBER)){
+			run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "azioneCheck")
+			solve( showResourceModel ) 	
+			solve (assert( done ( check , $payloadArg(0) ) ) )
+		}
+	} Goto solveAction	
+	
+	State azioneQuerySync{
+		onMsg(queryPresence : queryPresence( cibo, FOOD )){
+			printCurrentMessage
+			run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "azioneQuerySync")
+			solve( showResourceModel ) 	
+			solve (assert( done ( querySync ,  $payloadArg(1)) ) )	
+			
+			forward fridge_dummy -m queryPresence : queryPresence( cibo, $payloadArg(1)) 
+		}
+	} Transition t0 whenMsg replyPresence -> handleReply
+					whenEvent stopAppl -> stoppedWaitingReply
+					
+	State azioneQueryASync{
+		onMsg(queryPresence : queryPresence( cibo, FOOD )){
+			printCurrentMessage
+			run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "azioneQueryAsync")
+			solve( showResourceModel ) 	
+			solve (assert( done ( queryAsync ,  $payloadArg(1)) ) )	
+		}
+	} Goto solveAction
+
+	
+	State handleReply{	
+		solve( currentCmd( addFood,CIBO ))		
+		["val Cibo=currentSolution.getVarValue(\"CIBO\")"]
+		
+		onMsg( replyPresence : replyPresence(present)){						
+			forward butler -m cmd : cmd( successAddFood, $Cibo)
+		}
+		onMsg( replyPresence : replyPresence(absent)){
+			emit missingFood : missingFood( $Cibo )			
+		}
+	} Goto solveAction
+	
+	
+	//---------------HANDLE APPLICATION STOP/RESTART-------------------------------
+						
+					
+	State stoppedSolvedAction{
+		run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "stoppedSolvedAction")
+		
+		printCurrentMessage		
+		solve( showResourceModel ) 	
+		
+	} Transition t0 whenEvent reactivateAppl -> restartSolvedAction
+	
+	State restartSolvedAction{		
+		solve (assert( done ( restartSolvedAction ) ) )
+		
+		printCurrentMessage
+		solve( showResourceModel ) 		
+			
+	} Transition t0 whenMsg done -> waitCmd
+					whenMsg queryPresence -> azioneQuerySync
+					whenEvent stopAppl -> stoppedSolvedAction
+							
+	State stoppedWaitingReply{
+		run itunibo.butler.butlerResourceModelSupport.updateModelState(myself, "stoppedWaitingReply")
+		
+		printCurrentMessage		
+		solve( showResourceModel ) 	
+		
+	} Transition t0 whenEvent reactivateAppl -> restartWaitingReply
+	
+	State restartWaitingReply{		
+		solve (assert( done ( restartSolvedAction ) ) )
+		
+		printCurrentMessage
+		solve( showResourceModel ) 		
+			
+	} Transition t0 whenMsg replyPresence -> handleReply		
+}
