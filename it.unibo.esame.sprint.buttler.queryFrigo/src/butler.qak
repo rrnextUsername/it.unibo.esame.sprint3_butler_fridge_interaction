@@ -10,18 +10,17 @@
  * 		->	i comandi adesso hanno due argomenti: un nome e un parametro
  * 
  * 	SPRINT GOAL:
- * 		->	il butler deve poter riconoscere il comando cmd( AddFood, FOOD_NAME ) inviato dalla frontend
+ * 		->	il butler deve poter riconoscere il comando cmd( AddFood, FOOD_NAME ) inviato dal Maitre
  * 			->	il butler deve poter comunicare con il frigo
  * 			->	il butler deve attendere una risposta dal frigo se necessario
  * 			->	il butler deve poter agire in base alla risposta
- * 				->	notificando la frontend se un cibo manca
+ * 				->	notificando il Maitre se un cibo manca
  * 				->	continuando la sua esecuzione se il cibo è presente
  * 		->	il butler deve interrompere l'esecuzione di azioni su stop e riprenderla su restart, anche nel caso stia aspettando una risposta
  * 
  * 	SPRINT RETROSPECTIVE:
  * 		->	le azioni in prolog potrebbero dover avere più argomenti di quanti ne hanno al momento
  * 		->	potrebbe non esssere necessario avere due stati di stop nel butler
- *		->	
  */
 
 
