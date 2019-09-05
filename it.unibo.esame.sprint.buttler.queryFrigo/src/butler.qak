@@ -4,10 +4,8 @@
  * 		otherwise it sends a warning to the Maitre 
  * 	
  * 	BACKLOG ITEM:
- * 		->	BUTLER in grado di interagire con il frigo	
- * 
- * 	MODIFICHE DA SPRINT RETROSPECTIVE PRECEDENTI:
- * 		->	i comandi adesso hanno due argomenti: un nome e un parametro
+ * 		->	12
+ *		->	19
  * 
  * 	SPRINT GOAL:
  * 		->	il butler deve poter riconoscere il comando cmd( AddFood, FOOD_NAME ) inviato dal Maitre
@@ -15,11 +13,11 @@
  * 			->	il butler deve attendere una risposta dal frigo se necessario
  * 			->	il butler deve poter agire in base alla risposta
  * 				->	notificando il Maitre se un cibo manca
- * 				->	continuando la sua esecuzione se il cibo è presente
+ * 				->	continuando la sua esecuzione se il cibo Ã¨ presente
  * 		->	il butler deve interrompere l'esecuzione di azioni su stop e riprenderla su restart, anche nel caso stia aspettando una risposta
  * 
  * 	SPRINT RETROSPECTIVE:
- * 		->	le azioni in prolog potrebbero dover avere più argomenti di quanti ne hanno al momento
+ * 		->	le azioni in prolog potrebbero dover avere piÃ¹ argomenti di quanti ne hanno al momento
  * 		->	potrebbe non esssere necessario avere due stati di stop nel butler
  */
 
@@ -34,7 +32,7 @@ Dispatch	replyPresence		:	replyPresence( STATUS )
 Event 		stopAppl			:	stopAppl
 Event 		reactivateAppl		:	reactivateAppl
    
-Dispatch	cmd					:	cmd( CMD, ARG1 ) //modificato cmd per gestire un argomento in più (FOOD ecc.)
+Dispatch	cmd					:	cmd( CMD, ARG1 ) //modificato cmd per gestire un argomento in piÃ¹ (FOOD ecc.)
 Dispatch 	azione				:	azione( AZIONE )
 Dispatch 	check				:	check( NUMBER )
 
