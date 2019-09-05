@@ -1,4 +1,31 @@
- System butler 
+/*	REQUIREMENTS:
+ * 		->	During the service, the Maitre can send to the RBR the add food command, by specifying a food-code. 
+ * 		The RBR executes the task only if food with the given code is available in the fridge, 
+ * 		otherwise it sends a warning to the Maitre 
+ * 	
+ * 	BACKLOG ITEM:
+ * 		->	BUTLER in grado di interagire con il frigo	
+ * 
+ * 	MODIFICHE DA SPRINT RETROSPECTIVE PRECEDENTI:
+ * 		->	i comandi adesso hanno due argomenti: un nome e un parametro
+ * 
+ * 	SPRINT GOAL:
+ * 		->	il butler deve poter riconoscere il comando cmd( AddFood, FOOD_NAME ) inviato dalla frontend
+ * 			->	il butler deve poter comunicare con il frigo
+ * 			->	il butler deve attendere una risposta dal frigo se necessario
+ * 			->	il butler deve poter agire in base alla risposta
+ * 				->	notificando la frontend se un cibo manca
+ * 				->	continuando la sua esecuzione se il cibo è presente
+ * 		->	il butler deve interrompere l'esecuzione di azioni su stop e riprenderla su restart, anche nel caso stia aspettando una risposta
+ * 
+ * 	SPRINT RETROSPECTIVE:
+ * 		->	le azioni in prolog potrebbero dover avere più argomenti di quanti ne hanno al momento
+ * 		->	potrebbe non esssere necessario avere due stati di stop nel butler
+ *		->	
+ */
+
+
+System butler 
  
 mqttBroker "localhost" : 1883    //192.168.1.18  192.168.43.229
 
